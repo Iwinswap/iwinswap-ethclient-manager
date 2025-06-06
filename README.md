@@ -116,10 +116,10 @@ func main() {
 
 ```go
 clientConfig := &clientmanager.ClientConfig{
-	MonitorHealthInterval:   10 * time.Second,
-	HealthCheckRPCTimeout:   3 * time.Second,
+	MonitorHealthInterval:   250 * time.Millisecond,
+	HealthCheckRPCTimeout:   5 * time.Second,
 	WaitHealthyPollInterval: 500 * time.Millisecond,
-	MaxConcurrentETHCalls:   20,
+	MaxConcurrentETHCalls:   32,
 }
 
 managerConfig := &clientmanager.ClientManagerConfig{
