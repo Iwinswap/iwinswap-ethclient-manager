@@ -18,6 +18,7 @@ var (
 	defaultHealthCheckRPCTimeout   = 5 * time.Second
 	defaultWaitHealthyPollInterval = 1 * time.Second
 	defaultMaxConcurrentETHCalls   = 10 // Default for max concurrent calls to the ETH node
+	defaultDialClientTimeout       = 10 * time.Second
 	defaultLogger                  = &DefaultLogger{}
 )
 
@@ -27,6 +28,7 @@ type ClientConfig struct {
 	HealthCheckRPCTimeout   time.Duration // Timeout for the RPC call within each health check.
 	WaitHealthyPollInterval time.Duration // How often to poll for health in WaitUntilHealthy.
 	MaxConcurrentETHCalls   int           // Maximum concurrent calls allowed to the underlying ETHClient.
+	DialTimeout             time.Duration // timeout for dial client
 	Logger                  Logger
 }
 
@@ -44,6 +46,11 @@ func (config *ClientConfig) applyDefaults() {
 	if config.MaxConcurrentETHCalls <= 0 {
 		config.MaxConcurrentETHCalls = defaultMaxConcurrentETHCalls
 	}
+
+	if config.DialTimeout <= 0 {
+		config.DialTimeout = defaultDialClientTimeout
+	}
+
 	if config.Logger == nil {
 		config.Logger = defaultLogger
 	}
@@ -67,12 +74,16 @@ type Client struct {
 }
 
 func NewClientFromDial(
-	ctx context.Context, // should not close until client is no longer needed
+	ctx context.Context, // passed-in context ctx controls the client's lifecycle
 	dial string,
 	config *ClientConfig,
 ) (*Client, error) {
-	ethClient, err := ethclient.DialContext(ctx, dial)
 	config.applyDefaults()
+	// a 10 second dial timeout should be flexible enough
+	dialCtx, cancel := context.WithTimeout(ctx, config.DialTimeout)
+	defer cancel()
+
+	ethClient, err := ethclient.DialContext(dialCtx, dial)
 	if err != nil {
 		return nil, err
 	}
@@ -98,6 +109,7 @@ func NewClientFromETHClient(
 	)
 
 	if err != nil {
+		cancel()
 		return nil, err
 	}
 
